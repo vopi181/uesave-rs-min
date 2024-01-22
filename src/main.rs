@@ -1,5 +1,5 @@
 use std::fs::{self, File, OpenOptions};
-use std::io::{stdin, stdout, BufRead, BufReader, BufWriter, Cursor, Write};
+use std::io::{stdin, stdout, BufRead, BufReader, BufWriter, Write};
 
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
@@ -79,8 +79,6 @@ enum Action {
     ToJson(ActionToJson),
     /// Convert JSON back to binary save
     FromJson(ActionFromJson),
-    /// Launch editor to edit a save file as JSON in place
-    Edit(ActionEdit),
     /// Test resave
     TestResave(ActionTestResave),
 }
@@ -136,31 +134,7 @@ pub fn main() -> Result<()> {
             }
             println!("Resave successful");
         }
-        Action::Edit(action) => {
-            let mut types = Types::new();
-            for (path, t) in action.r#type {
-                types.add(path, t);
-            }
-
-            let save = Save::read_with_types(&mut Cursor::new(fs::read(&action.path)?), &types)?;
-            let modified_save: Save = serde_json::from_slice(&edit::edit_bytes_with_builder(
-                serde_json::to_vec_pretty(&save)?,
-                tempfile::Builder::new().suffix(".json"),
-            )?)?;
-
-            if save == modified_save {
-                println!("File unchanged, doing nothing.");
-            } else {
-                println!("File modified, writing new save.");
-                modified_save.write(&mut BufWriter::new(
-                    OpenOptions::new()
-                        .create(true)
-                        .truncate(true)
-                        .write(true)
-                        .open(action.path)?,
-                ))?;
-            }
-        }
+        
     }
     Ok(())
 }
